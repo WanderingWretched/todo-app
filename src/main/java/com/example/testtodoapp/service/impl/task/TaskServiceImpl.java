@@ -43,23 +43,25 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional
-    @Cacheable(value = "TaskService::getById", key = "#
-    public Task getById(Long id) {
-        return taskRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Task not found"));
-    }
+    @Cacheable(value = "TaskService::getById", key = "#id")
+            public Task getById(Long id){
+            return taskRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Task not found"));
+            }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<TaskDto> getAllTasks() {
-        List<Task> tasks = taskRepository.findAll();
-        List<TaskDto> tasksDto = new ArrayList<>();
-        tasks.forEach(task -> tasksDto.add(modelMapper.map(task, TaskDto.class)));
-        return tasksDto;
-    }
+            @Override
+            @Transactional(readOnly = true)
+            public List<TaskDto>getAllTasks(){
+            List<Task>tasks = taskRepository.findAll();
+            List<TaskDto>tasksDto = new ArrayList<>();
+            tasks.forEach(task -> tasksDto.add(modelMapper.map(task, TaskDto.class)));
+            return tasksDto;
+            }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<Task> getAllByUserId(Long userId) throws ResourceNotFoundException {
+            @Override
+            @Transactional(readOnly = true)
+            public List<Task>getAllByUserId(Long userId) throws
+
+    ResourceNotFoundException {
         return taskRepository.findAllByUserId(userId);
     }
 
