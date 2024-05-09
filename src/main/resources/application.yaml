@@ -1,0 +1,31 @@
+spring:
+  redis:
+    host: localhost
+    port: 6379
+  datasource:
+    url: jdbc:postgresql://localhost:5432/todo?characterEncoding=UTF-8?useLegacyDatetimeCode=false&serverTimezone=UTC
+    username: postgres
+    password: alex
+    driver-class-name: org.postgresql.Driver
+    initialization-mode: always
+  jpa:
+    defer-datasource-initialization: true
+    hibernate:
+     # ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format-sql: true
+      database: postgresql
+      database-platform: org.hibernate.dialect.PostgreSQLDialect
+  sql:
+    init:
+      mode: always
+
+application:
+  security:
+    jwt:
+      secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+      expiration: 86400000 # a day
+      refresh-token:
+        expiration: 604800000 # 7 days
