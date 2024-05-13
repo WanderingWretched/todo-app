@@ -13,20 +13,24 @@ import com.example.testtodoapp.repository.task.TaskStatusRepository;
 import com.example.testtodoapp.service.task.TaskService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
+@Cacheable("TaskServiceImpl")
 public class TaskServiceImpl implements TaskService {
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
     private final TaskStatusRepository taskStatusRepository;
     private final ModelMapper modelMapper;
-
 
     @Autowired
     TaskServiceImpl(
@@ -43,30 +47,33 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional
-    @Cacheable(value = "TaskService::getById", key = "#id")
-            public Task getById(Long id){
-            return taskRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Task not found"));
-            }
+    @Cacheable(value = "TaskServiceImpl::getById", key = "#id")
+    public Task getById(Long id) {
+        return taskRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Task not found"));
+    }
 
-            @Override
-            @Transactional(readOnly = true)
-            public List<TaskDto>getAllTasks(){
-            List<Task>tasks = taskRepository.findAll();
-            List<TaskDto>tasksDto = new ArrayList<>();
-            tasks.forEach(task -> tasksDto.add(modelMapper.map(task, TaskDto.class)));
-            return tasksDto;
-            }
+    @Override
+    @Transactional(readOnly = true)
+    public List<TaskDto> getAllTasks() {
+        List<Task> tasks = taskRepository.findAll();
+        List<TaskDto> tasksDto = new ArrayList<>();
+        tasks.forEach(task -> tasksDto.add(modelMapper.map(task, TaskDto.class)));
+        return tasksDto;
+    }
 
-            @Override
-            @Transactional(readOnly = true)
-            public List<Task>getAllByUserId(Long userId) throws
-
-    ResourceNotFoundException {
+    @Override
+    @Transactional(readOnly = true)
+    public List<Task> getAllByUserId(Long userId) throws
+            ResourceNotFoundException {
         return taskRepository.findAllByUserId(userId);
     }
 
     @Override
     @Transactional
+    @CachePut(
+            value = "TaskServiceImpl::getById",
+            key = "#task.id"
+    )
     public Task update(Long taskId, UpdateTaskDto task) {
         Task existTask = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Задача с id " + taskId + " не найдена"));
@@ -111,6 +118,11 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional
+    @Cacheable(
+            value = "TaskServiceImpl::getById",
+            condition = "#task.id!=null",
+            key = "#task.id"
+    )
     public TaskDto createTask(CreateTaskRequest taskRequest) {
         User assignUser;
 
@@ -137,6 +149,10 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional
+    @CacheEvict(
+            value = "TaskServiceImpl::getById",
+            key = "#id"
+    )
     public void delete(Long id) {
         Task taskToDelete = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Задача с id " + id + " не найдена"));

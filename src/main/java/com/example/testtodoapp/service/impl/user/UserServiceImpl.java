@@ -11,6 +11,10 @@ import com.example.testtodoapp.repository.task.TaskRepository;
 import com.example.testtodoapp.service.UserService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -26,12 +30,21 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final ModelMapper modelMapper;
 
+    private final ValueOperations valueOperations;
+
     @Autowired
-    UserServiceImpl(UserRepository userRepository, TaskRepository taskRepository, PasswordEncoder passwordEncoder, ModelMapper modelMapper) {
+    UserServiceImpl(
+            UserRepository userRepository,
+            TaskRepository taskRepository,
+            PasswordEncoder passwordEncoder,
+            ModelMapper modelMapper,
+            ValueOperations valueOperations
+    ) {
         this.userRepository = userRepository;
         this.taskRepository = taskRepository;
         this.passwordEncoder = passwordEncoder;
         this.modelMapper = modelMapper;
+        this.valueOperations = valueOperations;
     }
 
     @Override
@@ -45,6 +58,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @Cacheable(value = "UserServiceImpl::getById", key = "#id")
     public UserDto getUser(Long userId) throws UserNotFoundException {
         User user = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("Пользователь с id: " + userId + " не найден"));
         return modelMapper.map(user, UserDto.class);
@@ -52,6 +66,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @Cacheable(value = "UserServiceImpl::getById", key = "#findUserRequest.firstName")
     public List<UserDto> getByFirstName(FindUserRequest findUserRequest) {
         List<User> findUsers = userRepository.findAllByFirstName(findUserRequest.getFirstName()).orElseThrow(() -> new UsernameNotFoundException("Пользователь с именем: " + findUserRequest.getFirstName() + " не найден"));
         List<UserDto> foundedUsers = new ArrayList<>();
@@ -61,6 +76,16 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @Caching(put = {
+            @CachePut(
+                    value = "UserService::getById",
+                    key = "#user.id"
+            ),
+            @CachePut(
+                    value = "UserService::getByUsername",
+                    key = "#user.firstName"
+            )
+    })
     public UserDto update(Long userId, UserDto user) throws UserNotFoundException {
         User existUser = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("Пользователь с id: " + userId + " не найден"));
